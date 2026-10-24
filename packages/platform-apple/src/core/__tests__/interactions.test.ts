@@ -114,6 +114,7 @@ test('iosRunnerOverrides uses synthesized iOS coordinate taps', async () => {
     y: 210,
     synthesized: true,
     appBundleId: 'com.example.App',
+    probeTextInput: true,
   });
 });
 

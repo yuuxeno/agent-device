@@ -141,7 +141,12 @@ export function iosRunnerOverrides(
         );
       },
       focus: async (x, y) => {
-        return await runAppleRunnerCommand(device, iosTapCommand(device, ctx, x, y), runnerOpts);
+        // Focus exists to address a later `type`, so it asks the runner for the input under the point.
+        return await runAppleRunnerCommand(
+          device,
+          { ...iosTapCommand(device, ctx, x, y), probeTextInput: true },
+          runnerOpts,
+        );
       },
       type: async (text, delayMs) => {
         return readTypeTextBackendResult(

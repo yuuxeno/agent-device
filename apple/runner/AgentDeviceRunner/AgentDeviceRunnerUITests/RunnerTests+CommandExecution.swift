@@ -147,6 +147,7 @@ extension RunnerTests {
           bundleId: mainOwned.bundleId
         )
         let xCTestTextInputProbeSkipped = !shouldProbeCoordinateTapTextInput(
+          requested: command.probeTextInput == true,
           xCTestChannelPenalized: xCTestChannelPenalized
         )
         let textInput: XCUIElement?

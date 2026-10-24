@@ -234,6 +234,20 @@ extension RunnerTests {
   /// records, and the chosen window is read again on its way to a display ID
   /// (`RunnerResolveWindowDisplayID`).
   func resolveRunnerWindow(app: XCUIApplication) -> (window: XCUIElement?, frame: CGRect) {
+    // Every press, scroll and swipe asked XCTest for the windows again (three queries, 0.1-0.3s).
+    // The answer holds for one app object until it rotates or its process is replaced, both of
+    // which clear the cache (agent-workflow fork).
+    if let cached = RunnerWindowCache.lookup(app: app) {
+      return cached
+    }
+    let resolved = resolveRunnerWindowUncached(app: app)
+    if resolved.window != nil {
+      RunnerWindowCache.store(app: app, window: resolved.window, frame: resolved.frame)
+    }
+    return resolved
+  }
+
+  func resolveRunnerWindowUncached(app: XCUIApplication) -> (window: XCUIElement?, frame: CGRect) {
     for window in app.windows.allElementsBoundByIndex where window.exists {
       let frame = window.frame
       if !frame.isEmpty {
@@ -600,4 +614,25 @@ extension RunnerTests {
 #endif
   }
 #endif
+}
+
+/// The window `resolveRunnerWindow` found for an app object, for a short while.
+enum RunnerWindowCache {
+  static let lifetime: TimeInterval = 30
+  nonisolated(unsafe) private static var entry:
+    (app: ObjectIdentifier, window: XCUIElement?, frame: CGRect, at: Date)?
+
+  static func lookup(app: XCUIApplication, now: Date = Date()) -> (window: XCUIElement?, frame: CGRect)? {
+    guard let entry, entry.app == ObjectIdentifier(app), now.timeIntervalSince(entry.at) < lifetime
+    else { return nil }
+    return (entry.window, entry.frame)
+  }
+
+  static func store(app: XCUIApplication, window: XCUIElement?, frame: CGRect, now: Date = Date()) {
+    entry = (ObjectIdentifier(app), window, frame, now)
+  }
+
+  static func clear() {
+    entry = nil
+  }
 }

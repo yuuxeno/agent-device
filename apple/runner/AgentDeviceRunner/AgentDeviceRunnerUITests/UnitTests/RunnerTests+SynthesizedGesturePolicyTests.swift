@@ -95,8 +95,9 @@ extension RunnerTests {
   }
 
   func testCoordinateTapTextInputProbeSkipsPenalizedXCTestChannel() {
-    XCTAssertTrue(shouldProbeCoordinateTapTextInput(xCTestChannelPenalized: false))
-    XCTAssertFalse(shouldProbeCoordinateTapTextInput(xCTestChannelPenalized: true))
+    XCTAssertTrue(shouldProbeCoordinateTapTextInput(requested: true, xCTestChannelPenalized: false))
+    XCTAssertFalse(shouldProbeCoordinateTapTextInput(requested: true, xCTestChannelPenalized: true))
+    XCTAssertFalse(shouldProbeCoordinateTapTextInput(requested: false, xCTestChannelPenalized: false))
   }
 
   func testOnlySynthesizedSequenceTapStepsTakeTheCoordinateTapPolicy() {

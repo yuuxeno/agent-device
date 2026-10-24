@@ -65,6 +65,14 @@ const BRIDGE_PREPARATION_PENDING = 'bridge-preparation-pending';
  */
 const WINDOW_COORDINATE_SPACE_UNRESOLVED = 'window-coordinate-space-unresolved';
 
+/**
+ * Why this capture left the bridge: the screen holds out-of-process content (a web view's page) the
+ * bridge cannot describe. Like an unresolved coordinate space, this speaks for the screen on display
+ * and not for the app generation: once the web view is closed the bridge serves the app again
+ * (agent-workflow fork; upstream retires the generation and pays the runner on every later capture).
+ */
+const REMOTE_CONTENT_BOUNDARY = 'remote-content-boundary';
+
 export type AppleSnapshotRoute = LaunchObservationPort &
   Readonly<{
     capture(
@@ -312,7 +320,11 @@ async function fallbackAfterFailure(
  * (#2491 settled the first of these, and #2612 the second).
  */
 function opensGenerationCircuit(failure: SnapshotSourceFailure): boolean {
-  return failure.kind !== 'preparing' && failure.code !== WINDOW_COORDINATE_SPACE_UNRESOLVED;
+  return (
+    failure.kind !== 'preparing' &&
+    failure.code !== WINDOW_COORDINATE_SPACE_UNRESOLVED &&
+    failure.code !== REMOTE_CONTENT_BOUNDARY
+  );
 }
 
 async function runFallback(
@@ -466,6 +478,9 @@ function fallbackWarning(reason: string, lineage: IosSnapshotLineage, served: bo
   }
   if (reason === WINDOW_COORDINATE_SPACE_UNRESOLVED) {
     return `Simulator AX snapshot unavailable (${reason}); used XCTest for this capture, which reports captured geometry in the app's own orientation space.`;
+  }
+  if (reason === REMOTE_CONTENT_BOUNDARY) {
+    return `Simulator AX snapshot unavailable (${reason}); used XCTest for this capture, which resolves out-of-process content.`;
   }
   const generation = lineage.generation ? 'this app generation' : 'an unverified app generation';
   return `Simulator AX snapshot unavailable (${reason}); used XCTest for ${generation}.`;

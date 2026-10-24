@@ -385,6 +385,29 @@ test('a window in an unresolved coordinate space sends only that capture to the 
   expect(second.warnings).toEqual(refused);
 });
 
+test('out-of-process content sends only that capture to the runner', async () => {
+  const source = sourceReturning({
+    stage: 'failed',
+    failure: {
+      kind: 'unsupported',
+      code: 'remote-content-boundary',
+      details: { remoteElements: 1 },
+    },
+  });
+  const fallback = vi.fn(async () => runnerResult());
+  const route = createAppleSnapshotRoute(platformRuntimeHostFixture(), {
+    source,
+    resolveTarget: vi.fn(async () => target),
+  });
+
+  await route.capture(ios, input, signal(), fallback);
+  await route.capture(ios, input, signal(), fallback);
+
+  // A web view is on screen now and closed a few steps later; the app generation stays on the bridge.
+  expect(source.acquire).toHaveBeenCalledTimes(2);
+  expect(fallback).toHaveBeenCalledTimes(2);
+});
+
 test('a new app generation re-enables the bridge', async () => {
   const source = sourceReturning({
     stage: 'failed',
@@ -870,7 +893,13 @@ test.for(['rejects', 'exits'] as const)(
       },
       {
         source: sourceReturning(bridgeAcquisition()),
-        resolveTarget: createSimulatorSnapshotTargetResolver(),
+        // Each reading of the clock is past the fresh-identity window, so the capture re-checks.
+        resolveTarget: createSimulatorSnapshotTargetResolver(
+          (() => {
+            let clock = 0;
+            return () => (clock += 5_000);
+          })(),
+        ),
       },
     );
     await withAppleToolProvider(

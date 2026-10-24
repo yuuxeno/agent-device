@@ -59,7 +59,13 @@ export function createAppleFoldableOperations(params: { device: DeviceInfo; sign
   return whenAdmitted(appleFoldableFacts(device).setFoldPose, () => ({
     setFoldPose: async (input: SetFoldPoseInput) => {
       signal.throwIfAborted();
-      return await setAppleFoldPose(device, input, { signal });
+      const result = await setAppleFoldPose(device, input, { signal });
+      // The runner remembers the app's window, which a fold moves to the other panel
+      // (agent-workflow fork). A target reset drops it, as a relaunch does.
+      const { hasLiveIosRunnerSession, notifyIosRunnerAppRelaunched } =
+        await import('../runner/runner-client.ts');
+      if (hasLiveIosRunnerSession(device)) await notifyIosRunnerAppRelaunched(device, { signal });
+      return result;
     },
   }));
 }

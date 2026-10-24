@@ -24,7 +24,9 @@ extension RunnerTests {
         error: ErrorPayload(message: "unsupported rotate orientation: \(orientation)")
       )
     }
-    guard let observedOrientation = rotateDevice(to: orientation) else {
+    let observed = rotateDevice(to: orientation)
+    RunnerWindowCache.clear()  // the window's frame turns with the device
+    guard let observedOrientation = observed else {
       return Response(
         ok: false,
         error: ErrorPayload(message: "unable to observe device orientation after rotate")

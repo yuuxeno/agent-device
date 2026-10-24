@@ -62,8 +62,13 @@ async function probeSystemSurfacePresence(
   signal: AbortSignal | undefined,
 ): Promise<SystemSurfacePresence> {
   let sawUnknown = false;
-  for (const host of IOS_SYSTEM_SURFACE_HOSTS) {
-    const pids = await hostProcessIds(host.processExecutable, signal);
+  // The scans are independent, so they run at once (agent-workflow fork: one capture paid one pgrep
+  // per host in series). The hosts are still checked in their registered order.
+  const scans = await Promise.all(
+    IOS_SYSTEM_SURFACE_HOSTS.map((host) => hostProcessIds(host.processExecutable, signal)),
+  );
+  for (const [index, host] of IOS_SYSTEM_SURFACE_HOSTS.entries()) {
+    const pids = scans[index]!;
     if (pids === 'unknown') {
       sawUnknown = true;
       continue;

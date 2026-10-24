@@ -141,6 +141,8 @@ export type RunnerCommand = {
   fullscreen?: boolean;
   inlineScreenshot?: boolean;
   synthesized?: boolean;
+  /** Coordinate `tap`: find the text input under the point for a following `type` (agent-workflow fork). */
+  probeTextInput?: boolean;
   steps?: RunnerSequenceStep[];
 };
 

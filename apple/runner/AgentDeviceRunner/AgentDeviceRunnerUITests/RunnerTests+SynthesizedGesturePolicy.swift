@@ -102,8 +102,8 @@ func synthesizedGesturePolicy(_ kind: SynthesizedGesturePolicyKind) -> Synthesiz
   }
 }
 
-func shouldProbeCoordinateTapTextInput(xCTestChannelPenalized: Bool) -> Bool {
-  !xCTestChannelPenalized
+func shouldProbeCoordinateTapTextInput(requested: Bool, xCTestChannelPenalized: Bool) -> Bool {
+  requested && !xCTestChannelPenalized
 }
 
 /// A synthesized `tap` step in a `sequence` is a standalone coordinate tap and follows its policy.

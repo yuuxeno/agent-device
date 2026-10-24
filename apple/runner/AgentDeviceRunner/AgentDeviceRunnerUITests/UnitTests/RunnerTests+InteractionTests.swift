@@ -121,6 +121,24 @@ extension RunnerTests {
       )
     }
 
+    /// The fork's window cache answers for the same app object until it expires or is cleared, and
+    /// never for another app object (a replaced process gets a new one).
+    @MainActor
+    func testRunnerWindowCacheAnswersOnlyForTheSameAppWhileFresh() {
+      let first = XCUIApplication(bundleIdentifier: "com.example.first")
+      let second = XCUIApplication(bundleIdentifier: "com.example.second")
+      let frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+      let start = Date()
+      RunnerWindowCache.store(app: first, window: nil, frame: frame, now: start)
+      XCTAssertEqual(RunnerWindowCache.lookup(app: first, now: start.addingTimeInterval(1))?.frame, frame)
+      XCTAssertNil(RunnerWindowCache.lookup(app: second, now: start.addingTimeInterval(1)))
+      XCTAssertNil(
+        RunnerWindowCache.lookup(app: first, now: start.addingTimeInterval(RunnerWindowCache.lifetime + 1))
+      )
+      RunnerWindowCache.clear()
+      XCTAssertNil(RunnerWindowCache.lookup(app: first, now: start.addingTimeInterval(1)))
+    }
+
     /// Launches the two-window fixture, installs the frame probe answering `frames` in read order
     /// (repeating its last answer), and resolves once.
     @MainActor
@@ -150,6 +168,7 @@ extension RunnerTests {
         XCTFail("unable to install the window frame probe")
         return ((nil, .zero), 0)
       }
+      RunnerWindowCache.clear()
       RunnerWindowFrameReads.begin(answering: frames)
       let originalImplementation = method_getImplementation(frameMethod)
       method_setImplementation(frameMethod, method_getImplementation(probeMethod))

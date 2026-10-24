@@ -249,6 +249,10 @@ struct Command: Codable {
   let fullscreen: Bool?
   let inlineScreenshot: Bool?
   let synthesized: Bool?
+  /// For a coordinate `tap`: find the text input under the point so a following bare `type` can
+  /// address it (agent-workflow fork; upstream always did this, at ~0.3-0.5s per tap). `focus` asks
+  /// for it; a plain press does not.
+  let probeTextInput: Bool?
   let steps: [SequenceStep]?
 }
 

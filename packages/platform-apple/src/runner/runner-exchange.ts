@@ -51,7 +51,12 @@ type RunnerExchangeSession = RunnerConnectionSession &
   >;
 
 const RUNNER_READY_PREFLIGHT_TIMEOUT_MS = 1_000;
-const RUNNER_PREFLIGHT_SKIP_FRESHNESS_MS = 5_000;
+/**
+ * How long a healthy mutation vouches for the runner. An agent that thinks between commands takes
+ * 5-15s per step, so upstream's 5s paid the `uptime` round trip on nearly every command (agent-workflow
+ * fork). A runner that died inside the window fails the command itself, and recovery re-probes it.
+ */
+const RUNNER_PREFLIGHT_SKIP_FRESHNESS_MS = 30_000;
 const CANCELED_COMMAND_STATUS_TIMEOUT_MS = 1_000;
 const CANCELED_COMMAND_POLL_INTERVAL_MS = 100;
 

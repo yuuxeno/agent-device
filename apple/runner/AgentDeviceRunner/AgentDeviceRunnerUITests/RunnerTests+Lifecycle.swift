@@ -202,6 +202,7 @@ extension RunnerTests {
   /// witness, the fresh-process snapshot warmup exemption, and the last-written per-command log
   /// markers. Every site that binds, rebinds, or drops the target runs this.
   func resetTargetBoundState() {
+    RunnerWindowCache.clear()
     clearRememberedTextEntryTap()
     snapshotXCTestPenaltyWarmupExemption.isPending = false
     lastLoggedFastAppGuardLine = nil

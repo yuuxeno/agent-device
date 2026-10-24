@@ -35,7 +35,10 @@ function targetFixture() {
     }),
   );
   const provider = createLocalAppleToolProvider({ simctl: { run }, runCommand });
-  const resolve = createSimulatorSnapshotTargetResolver();
+  // Every reading of the clock is past the fresh-identity window, so each capture re-checks the
+  // process like upstream; the window itself has its own test.
+  let clock = 0;
+  const resolve = createSimulatorSnapshotTargetResolver(() => (clock += 5_000));
   return {
     state,
     run,
@@ -62,6 +65,22 @@ test('an unchanged OS process reuses its exact app target without another simctl
     });
     expect(fixture.discoveryCount()).toBe(1);
     expect(fixture.runCommand).toHaveBeenCalledTimes(2);
+  });
+});
+
+test('a target re-checked a moment ago is reused without another process read', async () => {
+  const fixture = targetFixture();
+  let clock = 0;
+  const resolve = createSimulatorSnapshotTargetResolver(() => clock);
+  await withAppleToolProvider(fixture.provider, async () => {
+    const first = await resolve(ios, app, signal());
+    clock = 1_000;
+    expect(await resolve(ios, app, signal())).toBe(first);
+    expect(fixture.runCommand).toHaveBeenCalledTimes(1);
+    clock = 3_500;
+    expect(await resolve(ios, app, signal())).toBe(first);
+    expect(fixture.runCommand).toHaveBeenCalledTimes(2);
+    expect(fixture.discoveryCount()).toBe(1);
   });
 });
 

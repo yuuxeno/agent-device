@@ -13,6 +13,12 @@ import { readSnapshotTargetProcessStartTime } from './snapshot-process.ts';
 /** Identity re-check of a cached target: one local `ps`, never CoreSimulator IPC. */
 const TARGET_IDENTITY_TIMEOUT_MS = 3_000;
 /**
+ * How long a re-checked identity stands without another `ps` (agent-workflow fork). A capture after
+ * an action re-checked the same process a moment before; a relaunch inside this window is caught by
+ * the bridge's stale-target refresh, which costs one runner capture.
+ */
+const TARGET_IDENTITY_FRESH_MS = 2_000;
+/**
  * How long one capture waits for an in-flight discovery before taking the XCTest fallback.
  * Discovery spawns `simctl launchctl list` through xcrun: ~1s on an idle Mac, several seconds
  * on a loaded CI host. The wait is per capture, so captures that keep arriving while the probe
@@ -42,8 +48,11 @@ export type SimulatorSnapshotTargetResolver = (
   refresh?: 'refresh',
 ) => Promise<SimulatorSnapshotTarget>;
 
-export function createSimulatorSnapshotTargetResolver(): SimulatorSnapshotTargetResolver {
+export function createSimulatorSnapshotTargetResolver(
+  now: () => number = Date.now,
+): SimulatorSnapshotTargetResolver {
   const targets = new Map<string, SimulatorSnapshotTarget>();
+  const verifiedAt = new Map<string, number>();
   const runtimeByDevice = new Map<string, Promise<string>>();
   // One discovery per target at a time, detached from the caller's signal: a capture that gives up
   // on it, or is cancelled, must not take it down. A discovery that fails is forgotten, so the next
@@ -56,18 +65,25 @@ export function createSimulatorSnapshotTargetResolver(): SimulatorSnapshotTarget
     const key = `${device.id}:${appBundleId}`;
     const cached = targets.get(key);
     if (cached && refresh !== 'refresh') {
+      const checked = verifiedAt.get(key);
+      if (checked !== undefined && now() - checked < TARGET_IDENTITY_FRESH_MS) return cached;
       const observed = await readSnapshotTargetProcessStartTime(cached.pid, {
         signal,
         timeoutMs: TARGET_IDENTITY_TIMEOUT_MS,
       });
       signal.throwIfAborted();
-      if (observed === cached.processStartTime) return cached;
+      if (observed === cached.processStartTime) {
+        verifiedAt.set(key, now());
+        return cached;
+      }
     }
     targets.delete(key);
+    verifiedAt.delete(key);
     return await discoveries.value(key, {
       start: async () => {
         const target = await resolveSimulatorSnapshotTarget(device, appBundleId, runtimeByDevice);
         targets.set(key, target);
+        verifiedAt.set(key, now());
         return target;
       },
       wait: (waitMs, stop) =>
